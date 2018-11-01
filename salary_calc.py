@@ -79,8 +79,10 @@ class JobTypeBook:
         self.b_dict_job_types[job_type.j_id] = job_type
 
     def query_price_by_id(self, job_id: int, sub_id: int)->float:
-        if job_id not in self.b_dict_job_types or sub_id not in self.b_dict_job_types[job_id].j_dict_sub_types:
-            logging.error("query_price_by_id: Invalid job id %d or sub id %d\n" % (job_id, sub_id))
+        if job_id not in self.b_dict_job_types \
+                or sub_id not in self.b_dict_job_types[job_id].j_dict_sub_types:
+            logging.error("query_price_by_id: Invalid job id %d or sub id %d\n"
+                          % (job_id, sub_id))
             return 0.0
 
         return self._get_job_type(job_id)._get_sub_type_by_id(sub_id).s_price   # TODO:add para check
@@ -108,7 +110,8 @@ class JobTypeBook:
         return dict_book
 
     def get_data_frame(self)->DataFrame:
-        return DataFrame(self.get_dict(), index=[job_type.j_id for job_type in self.b_dict_job_types.values()])
+        return DataFrame(self.get_dict(),
+                         index=[job_type.j_id for job_type in self.b_dict_job_types.values()])
 
 
 class Job:
@@ -127,7 +130,8 @@ class Employee:
             self.load_jobs_from_file(file_path)
 
     def load_jobs_from_file(self, file_path: str = None):
-        data_frame = pd.read_excel(file_path, sheet_name="员工产值明细", header=1, usecols=[0, 1, 2],
+        data_frame = pd.read_excel(file_path, sheet_name="员工产值明细",
+                                   header=1, usecols=[0, 1, 2],
                                    dtype={"款号": np.int, "工序": np.int, "数量": np.int},
                                    comment="小计", convert_float=True, verbose=True)
         for index, row in data_frame.iterrows():
@@ -290,7 +294,8 @@ class Company:
 class Application(tk.Frame):
     label_selected_employee: tk.Label
     label_selected_price: tk.Label
-    textbox_output_dir: tk.Text
+    entry_output_dir: tk.Entry
+    btn_select_output_dir: tk.Button
     btn_select_employee: tk.Button
     btn_select_price: tk.Button
     btn_output: tk.Button
@@ -322,8 +327,13 @@ class Application(tk.Frame):
         self.label_selected_price.pack()
 
         self.entry_output_dir = tk.Entry(top_frame)
-        self.entry_output_dir["text"] = "None"
         self.entry_output_dir.pack()
+        self.entry_output_dir.insert(0, string="None")
+
+        self.btn_select_output_dir = tk.Button(top_frame)
+        self.btn_select_output_dir["text"] = "..."
+        self.btn_select_output_dir["command"] = self.select_output_dir
+        self.btn_select_output_dir.pack()
 
         self.btn_select_employee = tk.Button(frame)
         self.btn_select_employee["text"] = "添加员工文件"
@@ -342,6 +352,13 @@ class Application(tk.Frame):
 
         self.quit = tk.Button(bottom_frame, text="退出", command=root.destroy)
         self.quit.pack(side=tk.BOTTOM)
+
+    def select_output_dir(self):
+        file_selected = tkinter.filedialog.askopenfilename()
+        if file_selected is '':
+            logging.error("No file has been selected\n")
+        else:
+            self.entry_output_dir.insert(0, string=file_selected)
 
     def handle_add_employee_from_file_list(self, excel_file_list: list):
         for _file in excel_file_list:
