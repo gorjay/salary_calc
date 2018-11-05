@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from pandas import Series, DataFrame
 import pandas as pd
@@ -5,6 +6,7 @@ import xlwings as xw
 import logging
 import tkinter as tk
 import tkinter.filedialog
+import tkinter.messagebox
 
 
 # type define
@@ -40,7 +42,7 @@ class JobType:
             if sub_type.s_name == name:
                 return sub_type
         logging.error("Can't find sub type id %s\n", name)
-        return None
+        raise Exception("工序号‘%s’无效" % name)
 
 
 class JobTypeBook:
@@ -83,12 +85,13 @@ class JobTypeBook:
                 or sub_id not in self.b_dict_job_types[job_id].j_dict_sub_types:
             logging.error("query_price_by_id: Invalid job id %d or sub id %d\n"
                           % (job_id, sub_id))
-            return 0.0
+            raise Exception("所要求的货品ID无效（%d-%d）\n"
+                            % (job_id, sub_id))
 
-        return self._get_job_type(job_id)._get_sub_type_by_id(sub_id).s_price   # TODO:add para check
+        return self._get_job_type(job_id)._get_sub_type_by_id(sub_id).s_price
 
     def query_price_by_name(self, job_id: int, sub_type_name: str)->float:
-        return self._get_job_type(job_id)._get_sub_type_by_name(sub_type_name).s_price   # TODO:add para check
+        return self._get_job_type(job_id)._get_sub_type_by_name(sub_type_name).s_price
 
     def get_dict(self)->dict:
         """
@@ -126,6 +129,7 @@ class Employee:
         self.e_name = name
         self.e_id = eid
         self.e_do_jobs: list = []
+        self.e_do_jobs_dict: dict = {}
         if file_path is not None:
             self.load_jobs_from_file(file_path)
 
@@ -139,62 +143,19 @@ class Employee:
             self.add_job(new_job)
 
     def add_job(self, job: Job):
-        # TODO: 去掉(job id, sub type id)重复项
-        self.e_do_jobs.append(job)
+        if job.job_type_id not in self.e_do_jobs_dict:
+            self.e_do_jobs_dict[job.job_type_id] = {}
 
-
-class OutputSheet:
-    def __init__(self, job_type: int, xw_sheet: xw.Sheet):
-        self.job_type: int = job_type
-        self.xw_sheet: xw.Sheet = xw_sheet
-        self.dict_sub_type_next_col: dict = {}
-
-    def add_item(self, sub_type: int, employee_id: int, quantity: int)-> bool:
-        if sub_type not in self.dict_sub_type_next_col:
-            self.dict_sub_type_next_col[sub_type] = 2
-
-        try:
-            self.xw_sheet.range((sub_type + 2, self.dict_sub_type_next_col[sub_type])).value = employee_id
-            self.xw_sheet.range((sub_type + 2, self.dict_sub_type_next_col[sub_type] + 1)).value = quantity
-            self.dict_sub_type_next_col[sub_type] += 2
-        except MemoryError:
-            print("err")
-            return False
-
-        return False
-
-    def last_write(self):
-        return
-
-
-class TotalOutputBook:
-    def __init__(self):
-        self.work_book = xw.Book()
-        self.dict_output_sheets: dict = {}
-        self.test_cnt = 1
-        self.dict_data_frames: dict = {}
-
-    def add_item(self, job_type: int, sub_type: int, employee_id: int, quantity: int):
-        """
-        Write a unit in workbook
-        :param job_type: job type id
-        :param sub_type: job sub type id
-        :param employee_id: employee id
-        :param quantity: item finish quantity
-        :return: boolean True-success, False-fail
-        """
-        # if job_type not in self.dict_output_sheets:
-        #     self.dict_output_sheets[job_type] = OutputSheet(job_type, self.work_book.sheets.add(str(job_type)))
-        # return self.dict_output_sheets[job_type].add_item(sub_type, employee_id, quantity)
-        self.work_book.sheets["Sheet1"].range((self.test_cnt, 1)).value = 1
-        self.test_cnt += 1
-        return True
-
-    def export_file(self, file_path: str):
-        for sheet in self.dict_output_sheets.values():
-            sheet.last_write()
-        self.work_book.save(file_path)
-        self.work_book.close()
+        if job.sub_type_id in self.e_do_jobs_dict[job.job_type_id]:
+            logging.warning("员工工作记录有重复项%s %d %d" %
+                            (self.e_name, job.job_type_id, job.sub_type_id))
+            for job_loop in self.e_do_jobs:
+                if job_loop.job_type_id == job.job_type_id and job_loop.sub_type_id == job.sub_type_id:
+                    job_loop.finish_count += job.finish_count
+            self.e_do_jobs_dict[job.job_type_id][job.sub_type_id] += job.finish_count
+        else:
+            self.e_do_jobs.append(job)
+            self.e_do_jobs_dict[job.job_type_id][job.sub_type_id] = job.finish_count
 
 
 class Company:
@@ -210,7 +171,7 @@ class Company:
         _sum = 0.0
         for job in self.c_dict_employee[name].e_do_jobs:
             if job.job_type_id == job_type_id:
-                _sum += self.c_job_type_book.query_price_by_id(job.job_type_id, job.sub_type_id) * job.finish_count # TODO:错误处理
+                _sum += self.c_job_type_book.query_price_by_id(job.job_type_id, job.sub_type_id) * job.finish_count
         return _sum
 
     def export_employee_salary_sheet(self, file_path: str):
@@ -223,26 +184,23 @@ class Company:
         :param file_path: file to output
         :return:
         """
-        # 1 check file exist
-        # TODO
-
         # 2 init data frame
         df = DataFrame()
         for employee in self.c_dict_employee.values():
             # each dict is a row in sheet
             _dict = {}
             for job_type in self.c_job_type_book.b_dict_job_types.values():
-                _dict[job_type.j_id] = self.calc_employee_salary_in_job_type(employee.e_name, job_type.j_id) # TODO:错误处理
+                _dict[job_type.j_id] = self.calc_employee_salary_in_job_type(employee.e_name, job_type.j_id)
             # add row to sheet
             df = df.append(DataFrame(_dict, index=[employee.e_name]))
 
-        # 3 export to excel TODO:列排序
+        # 3 export to excel
+        df = df.sort_index()
         print(df.to_string())
         df.to_excel(file_path, sheet_name="员工工资总表")
         return
 
     def export_job_type_output_sheet(self, file_path: str):
-        # TODO: check file_path
         # 1. Generate dict
         # dict_job_type_book structure ---
         # dict_job_type_book[job_type_id]
@@ -291,134 +249,197 @@ class Company:
         work_book.close()
 
 
+# TODO: 优化UI
 class Application(tk.Frame):
     label_selected_employee: tk.Label
     label_selected_price: tk.Label
     entry_output_dir: tk.Entry
-    btn_select_output_dir: tk.Button
+    btn_btn_select_output_dir: tk.Button
     btn_select_employee: tk.Button
     btn_select_price: tk.Button
     btn_output: tk.Button
     quit: tk.Button
 
     def __init__(self, master=None):
-        super().__init__(master)    #TODO:what??
+        super().__init__(master)
         self.pack()
         self.create_widgets()
         self.my_company: Company = Company()
-        self.test()
 
     def create_widgets(self):
         # init frame
-        top_frame = tk.Frame(self)
-        top_frame.pack(side=tk.TOP)
-        frame = tk.Frame(self)
-        frame.pack()
-        bottom_frame = tk.Frame(self)
-        bottom_frame.pack(side=tk.BOTTOM)
+        first_frame = tk.Frame(self)
+        first_frame.pack(side=tk.TOP)
+        second_frame = tk.Frame(self)
+        second_frame.pack()
+        third_frame = tk.Frame(self)
+        third_frame.pack()
+        last_frame = tk.Frame(self)
+        last_frame.pack(side=tk.BOTTOM)
 
         # init widgets
-        self.label_selected_employee = tk.Label(top_frame)
-        self.label_selected_employee["text"] = "None employee file."
+        self.label_selected_employee = tk.Label(first_frame)
+        self.label_selected_employee["text"] = "<尚未添加员工信息>"
         self.label_selected_employee.pack()
 
-        self.label_selected_price = tk.Label(top_frame)
-        self.label_selected_price["text"] = "None price file."
+        self.label_selected_price = tk.Label(first_frame)
+        self.label_selected_price["text"] = "<尚未添加价格信息>"
         self.label_selected_price.pack()
 
-        self.entry_output_dir = tk.Entry(top_frame)
-        self.entry_output_dir.pack()
-        self.entry_output_dir.insert(0, string="None")
+        self.entry_output_dir = tk.Entry(second_frame)
+        self.entry_output_dir.insert(0, string="<尚未设置输出目录>")
+        self.entry_output_dir.pack(side=tk.LEFT)
 
-        self.btn_select_output_dir = tk.Button(top_frame)
-        self.btn_select_output_dir["text"] = "..."
-        self.btn_select_output_dir["command"] = self.select_output_dir
-        self.btn_select_output_dir.pack()
+        self.btn_btn_select_output_dir = tk.Button(second_frame)
+        self.btn_btn_select_output_dir["text"] = "..."
+        self.btn_btn_select_output_dir["command"] = self.btn_select_output_dir
+        self.btn_btn_select_output_dir.pack(side=tk.RIGHT)
 
-        self.btn_select_employee = tk.Button(frame)
+        self.btn_select_employee = tk.Button(third_frame)
         self.btn_select_employee["text"] = "添加员工文件"
         self.btn_select_employee["command"] = self.btn_add_employee_file
         self.btn_select_employee.pack(side=tk.LEFT)
 
-        self.btn_select_price = tk.Button(frame)
+        self.btn_select_price = tk.Button(third_frame)
         self.btn_select_price["text"] = "选择单价文件"
         self.btn_select_price["command"] = self.btn_select_price_file
         self.btn_select_price.pack(side=tk.LEFT)
 
-        self.btn_output = tk.Button(frame)
+        self.btn_output = tk.Button(third_frame)
         self.btn_output["text"] = "生成输出文件"
-        self.btn_output["command"] = self.btn_output
-        self.btn_output.pack(side="bottom")
+        self.btn_output["command"] = self.btn_output_function
+        self.btn_output.pack(side=tk.BOTTOM)
 
-        self.quit = tk.Button(bottom_frame, text="退出", command=root.destroy)
+        self.quit = tk.Button(last_frame, text="退出", command=root.destroy)
         self.quit.pack(side=tk.BOTTOM)
 
-    def select_output_dir(self):
-        file_selected = tkinter.filedialog.askopenfilename()
-        if file_selected is '':
-            logging.error("No file has been selected\n")
-        else:
-            self.entry_output_dir.insert(0, string=file_selected)
+    def btn_select_output_dir(self):
+        """
+        选择输出的目录按钮，记录在self.entry_output_dir中
+        :return:
+        """
+        dir_selected = tk.filedialog.askdirectory()
+        if dir_selected is not '':
+            self.entry_output_dir.delete(0, tk.END)
+            self.entry_output_dir.insert(0, string=dir_selected)
+
+    def btn_add_employee_file(self):
+        """
+        添加员工按钮：添加到Company类中
+        :return:
+        """
+        list_file = tk.filedialog.askopenfilenames()
+        if len(list_file) != 0:
+            try:
+                self.handle_add_employee_from_file_list(list_file)
+                self.label_selected_employee["text"] = "Employee file list: %s" % str(list_file)
+            except Exception as e:
+                tk.messagebox.showerror(title="ghSalaryCalc",message=e)
+
+    def btn_select_price_file(self):
+        """
+        选择单价本按钮：添加到Company中
+        :return:
+        """
+        file_selected = tk.filedialog.askopenfilename()
+        if file_selected is not '':
+            try:
+                self.handle_set_company_price_book(file_selected)
+                self.label_selected_price["text"] = "Price file: %s" % file_selected
+            except Exception as e:
+                tk.messagebox.showerror(title="ghSalaryCalc",message=e)
+
+    def btn_output_function(self):
+        """
+        程序执行按钮：产生输出文件
+        :return:
+        """
+        # 1. check if company is ready
+        if not self.my_company.c_dict_employee or not self.my_company.c_job_type_book:
+            tk.messagebox.showerror(title="ghSalaryCalc",message="尚未添加货品单价或员工信息")
+            return
+
+        # 2. check path valid
+        output_dir: str = self.entry_output_dir.get()
+        if not os.path.exists(output_dir):
+            if tk.messagebox.askyesno(title="ghSalaryCalc",message="输出目录将设置为当前目录"):
+                output_dir = os.getcwd()
+            else:
+                return
+
+        # 3. export files
+        try:
+            file_path = output_dir + os.sep + "每个款号总产量.xlsx"
+            if not os.path.exists(file_path) or \
+                    tk.messagebox.askyesno(title="ghSalaryCalc",message="是否覆盖原文件：%s" % file_path):
+                self.my_company.export_job_type_output_sheet(file_path)
+        except Exception as e:
+            tk.messagebox.showerror(title="ghSalaryCalc",message=e)
+            return
+
+        try:
+            file_path = output_dir + os.sep + "员工工资总表.xlsx"
+            if not os.path.exists(file_path) or \
+                    tk.messagebox.askyesno(title="ghSalaryCalc",message="是否覆盖原文件：%s" % file_path):
+                self.my_company.export_employee_salary_sheet(file_path)
+        except Exception as e:
+            tk.messagebox.showerror(title="ghSalaryCalc",message=e)
+            return
 
     def handle_add_employee_from_file_list(self, excel_file_list: list):
         for _file in excel_file_list:
             logging.debug("select %s \n" % _file)
+            # check file extension
+            _file_ext = os.path.splitext(_file)[1]
+            if _file_ext != ".xls" and _file_ext != ".xlsx":
+                raise Exception("不支持的文件格式: %s" % _file_ext)
+
             workbook = xw.Book(_file)
-            sheet_employee_job_assert(workbook.sheets["员工产值明细"])
+
+            # check sheet names
+            sheet_exist = False
+            for sht in workbook.sheets:
+                if sht.name == "员工产值明细":
+                    sheet_exist = True
+
+            if not sheet_exist:
+                raise Exception("员工文件%s里不包含表格‘员工产值明细’" % _file)
+
+            # check sheet info
+            first_line = workbook.sheets["员工产值明细"].range('A1:D1').value
+            if first_line[0] != "员工：" or first_line[2] != "工号：":
+                workbook.close()
+                raise Exception("表格%s格式不正确")
+
+            # add employee by sheet
+            # TODO: maybe need many employees in one file
             self.my_company.add_employee(name=workbook.sheets["员工产值明细"].range("B1").value,
                                          eid=workbook.sheets["员工产值明细"].range("D1").value,
-                                         file_path=r'E:\\code\\app\\private\\前工序1807.xls')
+                                         file_path=_file)
             workbook.close()
 
     def handle_set_company_price_book(self, file_path: str):
         work_book = xw.Book(file_path)
+        # check sheet names
+        sheet_exist = False
+        for sht in work_book.sheets:
+            if sht.name == "单价表":
+                sheet_exist = True
+
+        if not sheet_exist:
+            raise Exception("文件%s里不包含表格‘单价表’" % file_path)
+
         self.my_company.c_job_type_book = JobTypeBook(work_book.sheets["单价表"])
         work_book.close()
 
     def handle_output(self, output_dir: str):
         return
 
-    def btn_add_employee_file(self):
-        list_file = tkinter.filedialog.askopenfilenames()
-        if len(list_file) == 0:
-            logging.error("No file has been selected\n")
-        else:
-            self.label_selected_employee["text"] = "Employee file list: %s" % str(list_file)
-            self.handle_add_employee_from_file_list(list_file)
-
-    def btn_select_price_file(self):
-        file_selected = tkinter.filedialog.askopenfilename()
-        if file_selected is '':
-            logging.error("No file has been selected\n")
-        else:
-            self.label_selected_price["text"] = "Price file: %s" % file_selected
-            self.handle_set_company_price_book(file_selected)
-
-    def btn_output(self):
-        return
-
-    def test(self):
-        # self.handle_set_company_price_book(r'E:\\code\\app\\private\\前工序1807.xls')
-        # self.handle_add_employee_from_file_list([r'E:\\code\\app\\private\\前工序1807.xls'])
-        # company operation
-        # self.my_company.export_employee_salary_sheet(r'E:\\code\\app\\private\\员工工资总表.xls')
-        # self.my_company.export_job_type_output_sheet(r'E:\\code\\app\\private\\每个款号总产量.xlsx')
-        return
-
-
-# function
-def sheet_employee_job_assert(sht: xw.main.Sheet):
-    first_line = sht.range('A1:D1').value
-    assert first_line[0] == "员工："
-    assert first_line[2] == "工号："
-
 
 if __name__ == '__main__':
     logging.debug("hello hsj\n")
     # init logger
-    logging.basicConfig(filename='example.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
-    logging.debug('This message should go to the log file')
-    logging.warning('And this, too')
+    logging.basicConfig(filename='ghSalaryCalc.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
     # init gui
     root = tk.Tk()
     app = Application(master=root)
