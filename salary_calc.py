@@ -8,7 +8,7 @@ import tkinter as tk
 import tkinter.filedialog
 import tkinter.messagebox
 
-
+# TODO: 表格粗体
 # type define
 class JobSubType:
     s_id: int
@@ -231,20 +231,19 @@ class Company:
                 dict_df[job_type] = dict_df[job_type].append(tmp_df.T)
             print(dict_df[job_type].to_string())
 
-        # 2. Write to sheet
-        # work_book = xw.Book(file_path)
-        # for (job_type_id, dict_sub_types) in dict_job_type_book.items():
-        #     work_book.sheets.add(name=str(job_type_id))
-        #     for (sub_type_id, list_jobs) in dict_sub_types.items():
-        #         col_next = 1
-        #         for (employee_id, job_count) in list_jobs:
-        #             work_book.sheets[str(job_type_id)].range((sub_type_id + 2, col_next)).value = employee_id
-        #             work_book.sheets[str(job_type_id)].range((sub_type_id + 2, col_next + 1)).value = job_count
-        #             col_next += 2
-        # 3. save to file
+        # 2. save to file
         work_book = xw.Book()
         for (job_type, df) in dict_df.items():
-            work_book.sheets.add(name=str(job_type)).range("A1").value = df
+            work_sheet = work_book.sheets.add(name=str(job_type))
+            work_sheet.range("A1").value = df
+            work_sheet.range("A1").value = "工序号"
+            # work_cells = work_sheet.cells
+            for col_loop in range(len(df.columns)):
+                if col_loop % 2:
+                    work_sheet.range((1,col_loop+2)).value = "数量"
+                else:
+                    work_sheet.range((1,col_loop+2)).value = "工号"
+
         work_book.save(path=file_path)
         work_book.close()
 
