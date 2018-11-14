@@ -116,10 +116,10 @@ class JobTypeBook:
     def get_dict(self)->dict:
         """
         获取一个字典，key是所有可能的sub type id，值是每个job type对应的sub type id的单价，如下图
-                  sub 0 \    sub 1 \    sub 2 \ ...
-        job 0 \ price00 \ price 01 \ price 02 \...
-        job 1 \ price10 \ price 11 \ price 12 \...
-        job 2 \ price20 \ price 21 \ price 22 \..
+                  sub 0 |    sub 1 |    sub 2 | ...
+        job 0 | price00 | price 01 | price 02 |...
+        job 1 | price10 | price 11 | price 12 |...
+        job 2 | price20 | price 21 | price 22 |..
 
         :return: 字典
         """
@@ -217,10 +217,10 @@ class Company:
 
     def export_employee_salary_sheet(self, file_path: str):
         """
-                    job type 0 \ job type 1 \ job type 2 ...
-        employeeA \ salary 0   \ salary 1   \ salary 2   ...
-        employeeB \ salary 0   \ salary 1   \ salary 2   ...
-        employeeC \ salary 0   \ salary 1   \ salary 2   ...
+                    job type 0 | job type 1 | job type 2 ...
+        employeeA | salary 0   | salary 1   | salary 2   ...
+        employeeB | salary 0   | salary 1   | salary 2   ...
+        employeeC | salary 0   | salary 1   | salary 2   ...
 
         :param file_path: file to output
         :return:
@@ -292,16 +292,15 @@ class Company:
 
 
 class Application(tk.Frame):
-    # layer 1
-    label_selected_employee: tk.Label
-    label_selected_price: tk.Label
-    label_status: tk.Label
-    entry_output_dir: tk.Entry
-    btn_btn_select_output_dir: tk.Button
+    btn_output: tk.Button
+    btn_quit: tk.Button
     btn_select_employee: tk.Button
     btn_select_price: tk.Button
-    btn_output: tk.Button
-    quit: tk.Button
+    btn_show_employees: tk.Button
+    btn_show_job_types: tk.Button
+    label_selected_employee: tk.Label
+    label_selected_jobtypes: tk.Label
+    label_status: tk.Label
     listbox_err_report: tk.Listbox
 
     def __init__(self, master=None):
@@ -311,61 +310,33 @@ class Application(tk.Frame):
         self.my_company: Company = Company()
 
     def create_widgets(self):
-        # init frame
-        first_frame = tk.Frame(self)
-        first_frame.pack(side=tk.TOP)
-        second_frame = tk.Frame(self)
-        second_frame.pack()
-        third_frame = tk.Frame(self)
-        third_frame.pack()
-        fourth_frame = tk.Frame(self)
-        fourth_frame.pack()
-        last_frame = tk.Frame(self)
-        last_frame.pack(side=tk.BOTTOM)
+        self.btn_output              = tk.Button(self, text="生成表格", command=self.btn_cmd_output, width=30)
+        self.btn_quit                = tk.Button(self, text="退出", command=root.destroy, width=10)
+        self.btn_select_employee     = tk.Button(self, text="加载员工", command=self.btn_cmd_add_employee)
+        self.btn_select_price        = tk.Button(self, text="加载价格", command=self.btn_cmd_select_price)
+        self.btn_show_employees      = tk.Button(self, text="...")
+        self.btn_show_job_types      = tk.Button(self, text="...")
+        self.label_selected_employee = tk.Label(self, text="NA", width=20)
+        self.label_selected_jobtypes = tk.Label(self, text="NA", width=20)
+        self.label_status            = tk.Label(self, text="NA")
+        self.listbox_err_report      = tk.Listbox(self, width=40)
 
-        # init widgets
-        self.label_selected_employee = tk.Label(first_frame)
-        self.label_selected_employee["text"] = "<尚未添加员工信息>"
-        self.label_selected_employee.pack()
+        self.btn_select_employee.grid(row=0, column=0)
+        self.label_selected_employee.grid(row=0, column=1, columnspan=2)
+        self.btn_show_employees.grid(row=0, column=3)
 
-        self.label_selected_price = tk.Label(first_frame)
-        self.label_selected_price["text"] = "<尚未添加价格信息>"
-        self.label_selected_price.pack()
+        self.btn_select_price.grid(row=1, column=0)
+        self.label_selected_jobtypes.grid(row=1, column=1, columnspan=2)
+        self.btn_show_job_types.grid(row=1, column=3)
 
-        self.entry_output_dir = tk.Entry(second_frame)
-        self.entry_output_dir.insert(0, string="<尚未设置输出目录>")
-        self.entry_output_dir.pack(side=tk.LEFT)
+        self.btn_output.grid(row=2, column=0, columnspan=4)
 
-        self.btn_btn_select_output_dir = tk.Button(second_frame)
-        self.btn_btn_select_output_dir["text"] = "..."
-        self.btn_btn_select_output_dir["command"] = self.btn_cmd_select_output_dir
-        self.btn_btn_select_output_dir.pack(side=tk.RIGHT)
+        self.label_status.grid(row=3, column=0, columnspan=2)
+        self.btn_quit.grid(row=3, column=2, columnspan=2)
 
-        self.btn_select_employee = tk.Button(third_frame)
-        self.btn_select_employee["text"] = "添加员工文件"
-        self.btn_select_employee["command"] = self.btn_cmd_add_employee
-        self.btn_select_employee.pack(side=tk.LEFT)
+        self.listbox_err_report.grid(row=4, column=0, columnspan=4)
 
-        self.btn_select_price = tk.Button(third_frame)
-        self.btn_select_price["text"] = "选择单价文件"
-        self.btn_select_price["command"] = self.btn_cmd_select_price
-        self.btn_select_price.pack(side=tk.LEFT)
-
-        self.btn_output = tk.Button(third_frame)
-        self.btn_output["text"] = "生成输出文件"
-        self.btn_output["command"] = self.btn_cmd_output
-        self.btn_output.pack(side=tk.BOTTOM)
-
-        self.quit = tk.Button(last_frame, text="退出", command=root.destroy)
-        self.quit.pack(side=tk.BOTTOM)
-
-        self.listbox_err_report = tk.Listbox(last_frame)
-        self.listbox_err_report.pack()
-
-        self.label_status = tk.Label(last_frame)
-        self.label_status.pack()
-
-        self.log_debug("应用初始化成功")
+        self.log_debug("初始化成功")
 
     def btn_cmd_select_output_dir(self):
         """
@@ -387,10 +358,10 @@ class Application(tk.Frame):
         if len(list_file) != 0:
             try:
                 self.handle_add_employee_from_file_list(list_file)
-                self.label_selected_employee["text"] = "已加载员工文件: %s" % str(list_file)
+                self.label_selected_employee["text"] = str(list_file)
                 self.log_debug("成功加载员工信息")
             except Exception as e:
-                self.log_error(e)
+                self.log_error(repr(e))
 
     def btn_cmd_select_price(self):
         """
@@ -401,10 +372,10 @@ class Application(tk.Frame):
         if file_selected is not '':
             try:
                 self.handle_set_company_price_book(file_selected)
-                self.label_selected_price["text"] = "已加载货品价格文件: %s" % file_selected
+                self.label_selected_price["text"] = file_selected
                 self.log_debug("成功加载货品价格信息")
             except Exception as e:
-                self.log_error(e)
+                self.log_error(repr(e))
 
     def btn_cmd_output(self):
         """
@@ -417,12 +388,13 @@ class Application(tk.Frame):
             return
 
         # 2. check path valid
-        output_dir: str = self.entry_output_dir.get()
-        if not os.path.exists(output_dir):
-            if tk.messagebox.askyesno(title="ghSalaryCalc",message="输出目录将设置为当前目录"):
-                output_dir = os.getcwd()
-            else:
-                return
+        output_dir = os.getcwd()
+        # output_dir: str = self.entry_output_dir.get()
+        # if not os.path.exists(output_dir):
+        #     if tk.messagebox.askyesno(title="ghSalaryCalc",message="输出目录将设置为当前目录"):
+        #         output_dir = os.getcwd()
+        #     else:
+        #         return
 
         # 3. export files
         try:
@@ -432,7 +404,7 @@ class Application(tk.Frame):
                 self.my_company.export_job_type_output_sheet(file_path)
             self.log_debug("成功输出货品产量信息")
         except Exception as e:
-            self.log_error(e)
+            self.log_error(repr(e))
             return
 
         try:
@@ -442,7 +414,7 @@ class Application(tk.Frame):
                 self.my_company.export_employee_salary_sheet(file_path)
             self.log_debug("成功输出员工工资信息")
         except Exception as e:
-            self.log_error(e)
+            self.log_error(repr(e))
             return
         tk.messagebox.showinfo(title="ghSalaryCalc", message="执行结束")
 
@@ -497,10 +469,8 @@ class Application(tk.Frame):
 
     def log_debug(self, message: str):
         self.label_status["text"] = message
-        logging.debug(message)
 
     def log_error(self, message: str):
-        logging.error(message)
         self.label_status["text"] = message
         self.listbox_err_report.insert(0, message)
         tk.messagebox.showerror(title="ghSalaryCalc",message=message)
