@@ -8,9 +8,18 @@ import tkinter as tk
 import tkinter.filedialog
 import tkinter.messagebox
 
+
 # TODO: 表格粗体
-# type define
+
+
 class JobSubType:
+    """
+    A sub job type
+    Attr:
+        s_id: sub type id
+        s_name: sub type name
+        s_price: sub type's price
+    """
     s_id: int
     s_name: str
     s_price: float
@@ -26,6 +35,12 @@ class JobSubType:
 
 
 class JobType:
+    """
+    Describe a job type
+    Attr:
+        j_id: job id
+        j_dict_sub_types: dict[s_id(int): JobSubType]
+    """
     def __init__(self, jid: int):
         self.j_id: int = jid
         self.j_dict_sub_types: dict[int:JobSubType] = {}
@@ -46,6 +61,11 @@ class JobType:
 
 
 class JobTypeBook:
+    """
+    A job type book, collect all job types
+    Attr:
+        b_dict_job_types: dict[j_id(int): JobType]
+    """
     def __init__(self, sht: xw.main.Sheet):
         self.b_dict_job_types: dict[int:JobType] = {}
         list_region_start_cols = []
@@ -118,6 +138,13 @@ class JobTypeBook:
 
 
 class Job:
+    """
+    A Job which is finished by employee
+    Attr:
+        job_type_id: job type id
+        sub_type_id: sub job type id
+        finish_count: quantities of finished jobs
+    """
     def __init__(self, job_type_id: int = 0, sub_type_id: int = 0, finish_count: int = 0):
         self.job_type_id = job_type_id
         self.sub_type_id = sub_type_id
@@ -125,6 +152,14 @@ class Job:
 
 
 class Employee:
+    """
+    A Employee
+    Attr:
+        e_name: employee name
+        e_id: employee id
+        e_do_jobs: jobs employee had finished, list = [Job]
+        e_do_jobs_dict: jobs employeee had finished, dict[j_id(int): dict[s_id(int): finish_count(int)]]
+    """
     def __init__(self, name: str, eid: int, file_path: str = None):
         self.e_name = name
         self.e_id = eid
@@ -159,6 +194,12 @@ class Employee:
 
 
 class Company:
+    """
+    A company
+    Attr:
+        c_dict_employee: employees owned by the company, dict[name(str): Employee]
+        c_job_type_book: job type book
+    """
     def __init__(self):
         self.c_dict_employee: dict[str:Employee] = {}
         self.c_job_type_book: JobTypeBook = None
@@ -237,27 +278,31 @@ class Company:
             work_sheet = work_book.sheets.add(name=str(job_type))
             work_sheet.range("A1").value = df
             work_sheet.range("A1").value = "工序号"
+            work_sheet.range("A1").api.Font.Bold = True
             # work_cells = work_sheet.cells
             for col_loop in range(len(df.columns)):
                 if col_loop % 2:
                     work_sheet.range((1,col_loop+2)).value = "数量"
                 else:
                     work_sheet.range((1,col_loop+2)).value = "工号"
+                work_sheet.range((1,col_loop+2)).api.Font.Bold = True
 
         work_book.save(path=file_path)
         work_book.close()
 
 
-# TODO: 优化UI
 class Application(tk.Frame):
+    # layer 1
     label_selected_employee: tk.Label
     label_selected_price: tk.Label
+    label_status: tk.Label
     entry_output_dir: tk.Entry
     btn_btn_select_output_dir: tk.Button
     btn_select_employee: tk.Button
     btn_select_price: tk.Button
     btn_output: tk.Button
     quit: tk.Button
+    listbox_err_report: tk.Listbox
 
     def __init__(self, master=None):
         super().__init__(master)
@@ -273,6 +318,8 @@ class Application(tk.Frame):
         second_frame.pack()
         third_frame = tk.Frame(self)
         third_frame.pack()
+        fourth_frame = tk.Frame(self)
+        fourth_frame.pack()
         last_frame = tk.Frame(self)
         last_frame.pack(side=tk.BOTTOM)
 
@@ -291,28 +338,36 @@ class Application(tk.Frame):
 
         self.btn_btn_select_output_dir = tk.Button(second_frame)
         self.btn_btn_select_output_dir["text"] = "..."
-        self.btn_btn_select_output_dir["command"] = self.btn_select_output_dir
+        self.btn_btn_select_output_dir["command"] = self.btn_cmd_select_output_dir
         self.btn_btn_select_output_dir.pack(side=tk.RIGHT)
 
         self.btn_select_employee = tk.Button(third_frame)
         self.btn_select_employee["text"] = "添加员工文件"
-        self.btn_select_employee["command"] = self.btn_add_employee_file
+        self.btn_select_employee["command"] = self.btn_cmd_add_employee
         self.btn_select_employee.pack(side=tk.LEFT)
 
         self.btn_select_price = tk.Button(third_frame)
         self.btn_select_price["text"] = "选择单价文件"
-        self.btn_select_price["command"] = self.btn_select_price_file
+        self.btn_select_price["command"] = self.btn_cmd_select_price
         self.btn_select_price.pack(side=tk.LEFT)
 
         self.btn_output = tk.Button(third_frame)
         self.btn_output["text"] = "生成输出文件"
-        self.btn_output["command"] = self.btn_output_function
+        self.btn_output["command"] = self.btn_cmd_output
         self.btn_output.pack(side=tk.BOTTOM)
 
         self.quit = tk.Button(last_frame, text="退出", command=root.destroy)
         self.quit.pack(side=tk.BOTTOM)
 
-    def btn_select_output_dir(self):
+        self.listbox_err_report = tk.Listbox(last_frame)
+        self.listbox_err_report.pack()
+
+        self.label_status = tk.Label(last_frame)
+        self.label_status.pack()
+
+        self.log_debug("应用初始化成功")
+
+    def btn_cmd_select_output_dir(self):
         """
         选择输出的目录按钮，记录在self.entry_output_dir中
         :return:
@@ -321,8 +376,9 @@ class Application(tk.Frame):
         if dir_selected is not '':
             self.entry_output_dir.delete(0, tk.END)
             self.entry_output_dir.insert(0, string=dir_selected)
+            self.log_debug("成功选择输出目录")
 
-    def btn_add_employee_file(self):
+    def btn_cmd_add_employee(self):
         """
         添加员工按钮：添加到Company类中
         :return:
@@ -331,11 +387,12 @@ class Application(tk.Frame):
         if len(list_file) != 0:
             try:
                 self.handle_add_employee_from_file_list(list_file)
-                self.label_selected_employee["text"] = "Employee file list: %s" % str(list_file)
+                self.label_selected_employee["text"] = "已加载员工文件: %s" % str(list_file)
+                self.log_debug("成功加载员工信息")
             except Exception as e:
-                tk.messagebox.showerror(title="ghSalaryCalc",message=e)
+                self.log_error(e)
 
-    def btn_select_price_file(self):
+    def btn_cmd_select_price(self):
         """
         选择单价本按钮：添加到Company中
         :return:
@@ -344,11 +401,12 @@ class Application(tk.Frame):
         if file_selected is not '':
             try:
                 self.handle_set_company_price_book(file_selected)
-                self.label_selected_price["text"] = "Price file: %s" % file_selected
+                self.label_selected_price["text"] = "已加载货品价格文件: %s" % file_selected
+                self.log_debug("成功加载货品价格信息")
             except Exception as e:
-                tk.messagebox.showerror(title="ghSalaryCalc",message=e)
+                self.log_error(e)
 
-    def btn_output_function(self):
+    def btn_cmd_output(self):
         """
         程序执行按钮：产生输出文件
         :return:
@@ -372,8 +430,9 @@ class Application(tk.Frame):
             if not os.path.exists(file_path) or \
                     tk.messagebox.askyesno(title="ghSalaryCalc",message="是否覆盖原文件：%s" % file_path):
                 self.my_company.export_job_type_output_sheet(file_path)
+            self.log_debug("成功输出货品产量信息")
         except Exception as e:
-            tk.messagebox.showerror(title="ghSalaryCalc",message=e)
+            self.log_error(e)
             return
 
         try:
@@ -381,9 +440,11 @@ class Application(tk.Frame):
             if not os.path.exists(file_path) or \
                     tk.messagebox.askyesno(title="ghSalaryCalc",message="是否覆盖原文件：%s" % file_path):
                 self.my_company.export_employee_salary_sheet(file_path)
+            self.log_debug("成功输出员工工资信息")
         except Exception as e:
-            tk.messagebox.showerror(title="ghSalaryCalc",message=e)
+            self.log_error(e)
             return
+        tk.messagebox.showinfo(title="ghSalaryCalc", message="执行结束")
 
     def handle_add_employee_from_file_list(self, excel_file_list: list):
         for _file in excel_file_list:
@@ -434,8 +495,19 @@ class Application(tk.Frame):
     def handle_output(self, output_dir: str):
         return
 
+    def log_debug(self, message: str):
+        self.label_status["text"] = message
+        logging.debug(message)
+
+    def log_error(self, message: str):
+        logging.error(message)
+        self.label_status["text"] = message
+        self.listbox_err_report.insert(0, message)
+        tk.messagebox.showerror(title="ghSalaryCalc",message=message)
+
 
 if __name__ == '__main__':
+    # myapp = xw.App(visible=False)
     logging.debug("hello hsj\n")
     # init logger
     logging.basicConfig(filename='ghSalaryCalc.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
@@ -444,3 +516,4 @@ if __name__ == '__main__':
     app = Application(master=root)
     app.mainloop()
     logging.debug("end hsj\n")
+    # myapp.kill()
