@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="ad0d1810-7297-478c-b02c-f2aa541107d2" name="Default Changelist" comment="">
+    <list default="true" id="ad0d1810-7297-478c-b02c-f2aa541107d2" name="Default Changelist" comment="k">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/salary_calc.py" beforeDir="false" afterPath="$PROJECT_DIR$/salary_calc.py" afterDir="false" />
     </list>
@@ -15,37 +15,40 @@
     <session id="299017647">
       <usages-collector id="statistics.lifecycle.project">
         <counts>
-          <entry key="project.closed" value="5" />
+          <entry key="project.closed" value="6" />
           <entry key="project.open.time.0" value="1" />
           <entry key="project.open.time.1" value="1" />
           <entry key="project.open.time.16" value="1" />
           <entry key="project.open.time.2" value="1" />
           <entry key="project.open.time.20" value="1" />
           <entry key="project.open.time.23" value="1" />
-          <entry key="project.opened" value="6" />
+          <entry key="project.open.time.31" value="1" />
+          <entry key="project.opened" value="7" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
         <counts>
           <entry key="iml" value="1" />
-          <entry key="py" value="4" />
+          <entry key="py" value="6" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.open">
         <counts>
           <entry key="IDEA_MODULE" value="1" />
-          <entry key="Python" value="4" />
+          <entry key="Python" value="6" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
           <entry key="Python Console" value="696" />
-          <entry key="py" value="18833" />
+          <entry key="py" value="26148" />
+          <entry key="txt" value="1" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.edit">
         <counts>
-          <entry key="Python" value="19529" />
+          <entry key="PLAIN_TEXT" value="1" />
+          <entry key="Python" value="26844" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.vcs.git.usages" />
@@ -59,11 +62,13 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/salary_calc.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="252">
-              <caret line="324" lean-forward="true" selection-start-line="324" selection-end-line="324" />
+            <state relative-caret-position="468">
+              <caret line="437" column="26" selection-start-line="437" selection-start-column="26" selection-end-line="437" selection-end-column="26" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
-                <marker date="1542183200365" expanded="true" signature="13472:13476" ph="..." />
+                <marker date="1542252918788" expanded="true" signature="14424:14754" ph="..." />
+                <marker date="1542252918788" expanded="true" signature="14779:14788" ph="..." />
+                <marker date="1542252918788" expanded="true" signature="19364:19405" ph="..." />
               </folding>
             </state>
           </provider>
@@ -81,9 +86,9 @@
       </list>
     </option>
   </component>
-  <component name="ProjectFrameBounds" extendedState="6">
-    <option name="x" value="1762" />
-    <option name="y" value="199" />
+  <component name="ProjectFrameBounds" extendedState="7">
+    <option name="x" value="1744" />
+    <option name="y" value="217" />
     <option name="width" value="1366" />
     <option name="height" value="728" />
   </component>
@@ -92,6 +97,7 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
+      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -103,12 +109,11 @@
           <select />
         </subPane>
       </pane>
-      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
     <property name="SearchEverywhereHistoryKey" value="export&#9;null&#9;null" />
-    <property name="settings.editor.selected.configurable" value="editor.preferences.fonts.default" />
+    <property name="settings.editor.selected.configurable" value="reference.settingsdialog.IDE.editor.colors" />
   </component>
   <component name="RunDashboard">
     <option name="ruleStates">
@@ -176,12 +181,12 @@
     <frame x="1358" y="-284" width="1936" height="1096" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.34708393" visible="true" weight="0.21496312" />
-      <window_info id="Structure" order="1" sideWeight="0.6529161" side_tool="true" visible="true" weight="0.21496312" />
+      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.3472222" visible="true" weight="0.21496312" />
+      <window_info active="true" id="Structure" order="1" sideWeight="0.6527778" side_tool="true" visible="true" weight="0.21496312" />
       <window_info id="Favorites" order="2" sideWeight="0.501548" side_tool="true" weight="0.15226555" />
       <window_info anchor="bottom" id="Message" order="0" />
-      <window_info anchor="bottom" id="Find" order="1" sideWeight="0.49925596" weight="0.3271028" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.26923078" />
+      <window_info anchor="bottom" id="Find" order="1" sideWeight="0.49925596" visible="true" weight="0.3271028" />
+      <window_info anchor="bottom" id="Run" order="2" weight="0.22637591" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.3997923" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -209,13 +214,22 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$USER_HOME$/AppData/Local/Programs/Python/Python36/Lib/threading.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="238">
+          <caret line="863" selection-start-line="863" selection-end-line="863" />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/salary_calc.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="252">
-          <caret line="324" lean-forward="true" selection-start-line="324" selection-end-line="324" />
+        <state relative-caret-position="468">
+          <caret line="437" column="26" selection-start-line="437" selection-start-column="26" selection-end-line="437" selection-end-column="26" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
-            <marker date="1542183200365" expanded="true" signature="13472:13476" ph="..." />
+            <marker date="1542252918788" expanded="true" signature="14424:14754" ph="..." />
+            <marker date="1542252918788" expanded="true" signature="14779:14788" ph="..." />
+            <marker date="1542252918788" expanded="true" signature="19364:19405" ph="..." />
           </folding>
         </state>
       </provider>

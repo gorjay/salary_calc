@@ -7,9 +7,8 @@ import logging
 import tkinter as tk
 import tkinter.filedialog
 import tkinter.messagebox
-
-
-# TODO: 表格粗体
+import traceback
+import threading
 
 
 class JobSubType:
@@ -261,9 +260,9 @@ class Company:
         # 2. create data frame
         # output data frame :
         # job_type: 180072
-        #   \ e_id \ count \ e_id \ count ...
-        # 0 \
-        # 1 \
+        #   | e_id | count | e_id | count ...
+        # 0 |
+        # 1 |
         dict_df = {}
         for (job_type, dict_sub_type) in dict_job_type_book.items():
             dict_df[job_type] = DataFrame()
@@ -314,8 +313,8 @@ class Application(tk.Frame):
         self.btn_quit                = tk.Button(self, text="退出", command=root.destroy, width=10)
         self.btn_select_employee     = tk.Button(self, text="加载员工", command=self.btn_cmd_add_employee)
         self.btn_select_price        = tk.Button(self, text="加载价格", command=self.btn_cmd_select_price)
-        self.btn_show_employees      = tk.Button(self, text="...")
-        self.btn_show_job_types      = tk.Button(self, text="...")
+        self.btn_show_employees      = tk.Button(self, text="...", command=self.btn_cmd_show_employees)
+        self.btn_show_job_types      = tk.Button(self, text="...", command=self.btn_cmd_show_job_types)
         self.label_selected_employee = tk.Label(self, text="NA", width=20)
         self.label_selected_jobtypes = tk.Label(self, text="NA", width=20)
         self.label_status            = tk.Label(self, text="NA")
@@ -356,12 +355,10 @@ class Application(tk.Frame):
         """
         list_file = tk.filedialog.askopenfilenames()
         if len(list_file) != 0:
-            try:
-                self.handle_add_employee_from_file_list(list_file)
-                self.label_selected_employee["text"] = str(list_file)
-                self.log_debug("成功加载员工信息")
-            except Exception as e:
-                self.log_error(repr(e))
+            t = threading.Thread(target=self.handle_add_employees,
+                                 name="t_AddEmp",
+                                 args=(list_file, ))
+            t.start()
 
     def btn_cmd_select_price(self):
         """
@@ -370,12 +367,30 @@ class Application(tk.Frame):
         """
         file_selected = tk.filedialog.askopenfilename()
         if file_selected is not '':
-            try:
-                self.handle_set_company_price_book(file_selected)
-                self.label_selected_price["text"] = file_selected
-                self.log_debug("成功加载货品价格信息")
-            except Exception as e:
-                self.log_error(repr(e))
+            t = threading.Thread(target=self.handle_set_price,
+                                 name="t_SetPri",
+                                 args=(file_selected,))
+            t.start()
+
+    def btn_cmd_show_employees(self):
+        text = "已加载员工：\n"
+        line_ctrl_cnt = 0
+        for (name, employee) in self.my_company.c_dict_employee.items():
+            text = text + name + " "
+            line_ctrl_cnt += 1
+            if not line_ctrl_cnt % 3:
+                text += "\n"
+        tk.messagebox.showinfo(message=text)
+
+    def btn_cmd_show_job_types(self):
+        text = "已加载工项号：\n"
+        line_ctrl_cnt = 0
+        for (id, job_type) in self.my_company.c_job_type_book.b_dict_job_types.items():
+            text = text + str(id) + " "
+            line_ctrl_cnt += 1
+            if not line_ctrl_cnt % 3:
+                text += "\n"
+        tk.messagebox.showinfo(message=text)
 
     def btn_cmd_output(self):
         """
@@ -383,11 +398,13 @@ class Application(tk.Frame):
         :return:
         """
         # 1. check if company is ready
+        self.log_debug("检查Company信息是否完整...10%")
         if not self.my_company.c_dict_employee or not self.my_company.c_job_type_book:
             tk.messagebox.showerror(title="ghSalaryCalc",message="尚未添加货品单价或员工信息")
             return
 
         # 2. check path valid
+        self.log_debug("检查输出路径是否有效...20%")
         output_dir = os.getcwd()
         # output_dir: str = self.entry_output_dir.get()
         # if not os.path.exists(output_dir):
@@ -397,6 +414,7 @@ class Application(tk.Frame):
         #         return
 
         # 3. export files
+        self.log_debug("正在导出常量信息...40%")
         try:
             file_path = output_dir + os.sep + "每个款号总产量.xlsx"
             if not os.path.exists(file_path) or \
@@ -407,6 +425,7 @@ class Application(tk.Frame):
             self.log_error(repr(e))
             return
 
+        self.log_debug("正在导出工资信息...80%")
         try:
             file_path = output_dir + os.sep + "员工工资总表.xlsx"
             if not os.path.exists(file_path) or \
@@ -416,74 +435,101 @@ class Application(tk.Frame):
         except Exception as e:
             self.log_error(repr(e))
             return
+        self.log_debug("导出结束...100%")
         tk.messagebox.showinfo(title="ghSalaryCalc", message="执行结束")
 
-    def handle_add_employee_from_file_list(self, excel_file_list: list):
-        for _file in excel_file_list:
-            logging.debug("select %s \n" % _file)
-            # check file extension
-            _file_ext = os.path.splitext(_file)[1]
-            if _file_ext != ".xls" and _file_ext != ".xlsx":
-                raise Exception("不支持的文件格式: %s" % _file_ext)
+    def handle_add_employees(self, excel_file_list: list):
+        try:
+            for _file in excel_file_list:
+                    logging.debug("select %s \n" % _file)
+                    # check file extension
+                    _file_ext = os.path.splitext(_file)[1]
+                    if _file_ext != ".xls" and _file_ext != ".xlsx":
+                        raise Exception("不支持的文件格式: %s" % _file_ext)
 
-            workbook = xw.Book(_file)
+                    workbook = xw.Book(_file)
 
+                    # check sheet names
+                    sheet_exist = False
+                    for sht in workbook.sheets:
+                        if sht.name == "员工产值明细":
+                            sheet_exist = True
+
+                    if not sheet_exist:
+                        raise Exception("员工文件%s里不包含表格‘员工产值明细’" % _file)
+
+                    # check sheet info
+                    first_line = workbook.sheets["员工产值明细"].range('A1:D1').value
+                    if first_line[0] != "员工：" or first_line[2] != "工号：":
+                        workbook.close()
+                        raise Exception("表格%s格式不正确")
+
+                    # add employee by sheet
+                    # TODO: maybe need many employees in one file
+                    self.my_company.add_employee(name=workbook.sheets["员工产值明细"].range("B1").value,
+                                                 eid=workbook.sheets["员工产值明细"].range("D1").value,
+                                                 file_path=_file)
+                    workbook.close()
+            self.log_debug("成功加载员工信息")
+        except Exception as e:
+            self.log_error(repr(e))
+        finally:
+            # Update UI info
+            text = ""
+            for (name, employee) in self.my_company.c_dict_employee.items():
+                text += name + " "
+            self.label_selected_employee["text"] = text
+
+    def handle_set_price(self, file_path: str):
+        try:
+            work_book = xw.Book(file_path)
             # check sheet names
             sheet_exist = False
-            for sht in workbook.sheets:
-                if sht.name == "员工产值明细":
+            for sht in work_book.sheets:
+                if sht.name == "单价表":
                     sheet_exist = True
 
             if not sheet_exist:
-                raise Exception("员工文件%s里不包含表格‘员工产值明细’" % _file)
+                raise Exception("文件%s里不包含表格‘单价表’" % file_path)
 
-            # check sheet info
-            first_line = workbook.sheets["员工产值明细"].range('A1:D1').value
-            if first_line[0] != "员工：" or first_line[2] != "工号：":
-                workbook.close()
-                raise Exception("表格%s格式不正确")
-
-            # add employee by sheet
-            # TODO: maybe need many employees in one file
-            self.my_company.add_employee(name=workbook.sheets["员工产值明细"].range("B1").value,
-                                         eid=workbook.sheets["员工产值明细"].range("D1").value,
-                                         file_path=_file)
-            workbook.close()
-
-    def handle_set_company_price_book(self, file_path: str):
-        work_book = xw.Book(file_path)
-        # check sheet names
-        sheet_exist = False
-        for sht in work_book.sheets:
-            if sht.name == "单价表":
-                sheet_exist = True
-
-        if not sheet_exist:
-            raise Exception("文件%s里不包含表格‘单价表’" % file_path)
-
-        self.my_company.c_job_type_book = JobTypeBook(work_book.sheets["单价表"])
-        work_book.close()
+            self.my_company.c_job_type_book = JobTypeBook(work_book.sheets["单价表"])
+            work_book.close()
+            self.log_debug("成功加载货品价格信息")
+        except Exception as e:
+            self.log_error(repr(e))
+        finally:
+            # print selected job types
+            text = ""
+            for (id, job_type) in self.my_company.c_job_type_book.b_dict_job_types.items():
+                text += str(id) + " "
+            self.label_selected_jobtypes["text"] = text
 
     def handle_output(self, output_dir: str):
         return
 
     def log_debug(self, message: str):
-        self.label_status["text"] = message
+        self.write_status(message)
 
     def log_error(self, message: str):
-        self.label_status["text"] = message
+        self.write_status(message, True)
         self.listbox_err_report.insert(0, message)
         tk.messagebox.showerror(title="ghSalaryCalc",message=message)
+        logging.error(traceback.format_exc())
+
+    def write_status(self, message:str, is_error:bool = False):
+        if is_error:
+            self.label_status["fg"] = "red"
+        else:
+            self.label_status["fg"] = "blue"
+        self.label_status["text"] = message
+
 
 
 if __name__ == '__main__':
-    # myapp = xw.App(visible=False)
-    logging.debug("hello hsj\n")
     # init logger
     logging.basicConfig(filename='ghSalaryCalc.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
-    # init gui
+    logging.info("ghSalaryCalc start\n")
     root = tk.Tk()
     app = Application(master=root)
     app.mainloop()
-    logging.debug("end hsj\n")
-    # myapp.kill()
+    logging.info("ghSalaryCalc end\n")
