@@ -11,6 +11,9 @@ import traceback
 import threading
 
 
+_version_str = "v0.1"
+sofeware_title = "ghSalaryCalc %s Copyright@gorjay" % _version_str
+
 class JobSubType:
     """
     A sub job type
@@ -530,6 +533,7 @@ if __name__ == '__main__':
     logging.basicConfig(filename='ghSalaryCalc.log', level=logging.DEBUG, format='%(asctime)s %(message)s')
     logging.info("ghSalaryCalc start\n")
     root = tk.Tk()
+    root.title(sofeware_title)
     app = Application(master=root)
     app.mainloop()
     logging.info("ghSalaryCalc end\n")
